@@ -47,6 +47,9 @@ if [ -f "k3d-config.yaml" ]; then
 fi
 
 # Generate K3d config
+# Use fixed port 6443 for API server
+API_PORT=${API_PORT:-6443}
+
 cat <<EOF > /tmp/k3d-config.yaml
 apiVersion: k3d.io/v1alpha5
 kind: Simple
@@ -55,12 +58,9 @@ metadata:
 servers: 1
 agents: $NUM_WORKERS
 ports:
-  - port: "$API_PORT:6443"
+  - port: "0.0.0.0:$API_PORT:6443"
     nodeFilters:
       - loadbalancer
-kubeAPI:
-  host: "127.0.0.1"
-  hostPort: "$API_PORT"
 options:
   k3s:
     extraArgs:
@@ -71,6 +71,9 @@ options:
         nodeFilters:
           - server:*
       - arg: "--tls-san=localhost"
+        nodeFilters:
+          - server:*
+      - arg: "--tls-san=0.0.0.0"
         nodeFilters:
           - server:*
 EOF
@@ -107,9 +110,10 @@ echo "$(date '+%Y-%m-%d %H:%M:%S') | ✅ K3d cluster '$CLUSTER_NAME' is up and r
 
 echo "$(date '+%Y-%m-%d %H:%M:%S') | Docker and KIND environment is ready for use"
 
-# Save kubeconfig and set API server address
+# Save kubeconfig and set API server address to k8s-api-server with correct port
 cp /home/candidate/.kube/config /home/candidate/.kube/kubeconfig
-sed -i 's|server: https://127\.0\.0\.1:\([0-9]*\)|server: https://k8s-api-server:\1|' /home/candidate/.kube/kubeconfig
+# Replace any IP address and port with k8s-api-server hostname and API_PORT
+sed -i "s|server: https://[0-9.]*:[0-9]*|server: https://k8s-api-server:$API_PORT|" /home/candidate/.kube/kubeconfig
 
 export KUBECONFIG=/home/candidate/.kube/kubeconfig
 
