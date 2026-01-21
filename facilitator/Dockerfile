@@ -10,8 +10,9 @@ RUN apk add --no-cache openssh-client
 # A wildcard is used to ensure both package.json AND package-lock.json are copied
 COPY package*.json ./
 
-# Install dependencies
-RUN npm ci --omit=dev
+# Install dependencies - generate package-lock.json if it doesn't exist, then install
+RUN if [ ! -f package-lock.json ]; then npm install --package-lock-only; fi && \
+    npm ci --omit=dev
 
 # Bundle app source
 COPY . .
